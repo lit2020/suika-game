@@ -1,4 +1,5 @@
-import { Bodies, Engine, Render, Runner, World } from "matter-js";
+import { Bodies, Body, Engine, Render, Runner, World, Collision } from "matter-js";
+import { FRUITS_BASE as FRUITS } from "./fruits";
 
 /* Constans */
 const background_color = '#F7F4C8';
@@ -56,6 +57,7 @@ const topLine = Bodies.rectangle(
   board_width, top_line_thick,
   {
     isStatic: true,
+    isSensor: true, /* 센서로만 동작, 통과 가능 */
     render: { fillStyle: wall_color }
   }
 );
@@ -64,3 +66,74 @@ World.add(world, [leftWall, rightWall, ground, topLine]);
 
 Render.run(render);
 Runner.run(engine);
+
+/* 과일 생성 */
+
+let currentBody = null;
+let currentFruit = null;
+let disableAction = false;
+let loading = false;
+
+
+async function addFruit() {
+  const index = Math.floor(Math.random() * 6);
+  const fruit = FRUITS[index];
+  loadImage(`${fruit.name}.png`,
+    url => {
+      const fruit_body = Bodies.circle(board_width / 2, 50, fruit.radius,
+        {
+          index: index,
+          isSleeping: true,
+          render: {
+            sprite: { texture: url }
+          },
+          restitution: 0.4
+        });
+      currentBody = fruit_body;
+      currentFruit = fruit;
+      World.add(world, fruit_body);
+    },
+    () => {
+      console.log("Error  Loading ");
+    }
+  )
+}
+
+/* 키 입력 */
+const loadImage = (url, onSuccess, onError) => {
+  const img = new Image();
+  img.onload = () => {
+    onSuccess(img.src);
+  };
+  img.onError = onError();
+  img.src = url;
+}
+
+window.addEventListener("keydown", (e) => {
+  if (!disableAction) {
+    switch (e.code) {
+      case "KeyA":
+        Body.setPosition(currentBody, {
+          x: currentBody.position.x - 15,
+          y: currentBody.position.y
+        })
+        break;
+      case "KeyD":
+        Body.setPosition(currentBody, {
+          x: currentBody.position.x + 15,
+          y: currentBody.position.y
+        })
+        break;
+      case "KeyS":
+        disableAction = true;
+        currentBody.isSleeping = false;
+        setTimeout(() => {
+          addFruit();
+          disableAction = false;
+        }, 600);
+        break;
+    }
+  }
+});
+
+addFruit();
